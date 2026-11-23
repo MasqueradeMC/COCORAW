@@ -4,6 +4,7 @@ import webbrowser
 import customtkinter as ctk
 from tkinter import messagebox
 from datetime import datetime
+from User import USERS
 
 ctk.set_appearance_mode("system")
 ctk.set_default_color_theme("green")
@@ -19,23 +20,6 @@ class modApp(ctk.CTk):
         self.colors = {"border": "#D0D3D9"}
 
         self.data_file = "coco_raw_data_file.json"
-
-        #Employees
-
-        self.users = {
-            "admin": {
-                "password": "1234",
-                "role": "Manager"
-            },
-            "Cashier":{
-              "password": "5678",
-              "role": "Cashier" 
-            },
-            "Barista":{
-              "password": "9101",
-              "role": "Barista" 
-            },
-        }
 
         #recipes
         self.Recipes = {
@@ -62,7 +46,6 @@ class modApp(ctk.CTk):
         }
         self.orders = []
         self.current_user = None
-        self.current_user_role = None
         self.quantity_entries = {}
 
         self.load_data()
@@ -120,10 +103,7 @@ class modApp(ctk.CTk):
     def login_page(self):
 
         self.current_user = None
-        self.current_user_role = None
-
         self.clear_screen()
-        
         self.add_title("COCORAW")
 
         ctk.CTkLabel(self.main_frame, text="EMPLOYEE LOGIN:").pack(pady=10)
@@ -141,24 +121,23 @@ class modApp(ctk.CTk):
     def login(self):
         username = self.username_entry.get()
         password = self.password_entry.get()
-
-        if username in self.users and self.users[username]["password"] == password:
-            self.current_user = username
-            self.current_user_role = self.users[username]["role"]
-            messagebox.showinfo("Login Successful", f"Welcome, {self.current_user}!")
+        user = USERS.get(username)
+        if user and user.check_password(password):
+            self.current_user = user
+            messagebox.showinfo("You have logged in successfully", f"Welcome, {self.current_user.username}!")
             self.home_page()
         else:
-            messagebox.showerror("Login Failed", "Invalid username or password.")
+            messagebox.showerror("Login Failed", "Invalid username or password. Please try again.")
 
     #Role-Based Dashboard
     def home_page(self):
         self.clear_screen()
-        self.add_title(f"COCORAW, {self.current_user} ({self.current_user_role})")
+        self.add_title(f"COCORAW, {self.current_user.username} ({self.current_user.role})")
 
-        ctk.CTkLabel(self.main_frame, text="Welcome:"+self.current_user+"|role:"+self.current_user_role,font=("Arial",15)).pack(pady=5)
+        ctk.CTkLabel(self.main_frame, text="Welcome:"+self.current_user.username+"|role:"+self.current_user.role,font=("Arial",15)).pack(pady=5)
 
         #Manager Dashboard
-        if self.current_user_role == "Manager":
+        if self.current_user.role == "Manager":
             low_items = self.get_low_items()
             if low_items:
                 ctk.CTkLabel(self.main_frame, text="Low Inventory Items:"+",".join(low_items), font=("Arial", 15)).pack(pady=10)
@@ -167,17 +146,17 @@ class modApp(ctk.CTk):
 
            
     #cashier Dashboard
-        elif self.current_user_role == "Cashier":
+        elif self.current_user.role == "Cashier":
             ctk.CTkButton(self.main_frame, text="orders", command=self.orders_page).pack(pady=10)
 
     #Barista Dashboard
-        elif self.current_user_role == "Barista":
+        elif self.current_user.role == "Barista":
             ctk.CTkButton(self.main_frame, text="orders", command=self.orders_page).pack(pady=10)
 
 
     #access 
     def Check_Access(self, Roles):
-        if self.current_user_role not in Roles:
+        if not self.current_user.hasaccess(Roles):
             messagebox.showerror("Access Denied", "You do not have permission to access this page.")
             return False
         return True
@@ -210,7 +189,7 @@ class modApp(ctk.CTk):
         self.add_title("Orders")
 
         #Only managers and cashiers can take new orders
-        if self.current_user_role in ["Manager", "Cashier"]:
+        if self.current_user.role in ["Manager", "Cashier"]:
             ctk.CTkButton(self.main_frame, text="Take New Order", command=self.take_order_page).pack(pady=10)
 
         ctk.CTkLabel(self.main_frame, text="Order Queue (oldest first)", font=("Arial", 18)).pack(pady=5)
@@ -335,7 +314,7 @@ class modApp(ctk.CTk):
             ctk.CTkLabel(self.main_frame, text=f"{qty} x {name}", font=("Arial", 15)).pack(pady=2)
 
     #Only the barista and manager can mark an order as completed
-        if self.current_user_role in ["Manager", "Barista"]:
+        if self.current_user.role in ["Manager", "Barista"]:
             ctk.CTkButton(self.main_frame, text="Mark as Completed", command=lambda: self.complete_order(order)).pack(pady=15)
         ctk.CTkButton(self.main_frame, text="Back to Queue", command=self.orders_page).pack(pady=5)
 
