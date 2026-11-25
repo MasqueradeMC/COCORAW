@@ -61,7 +61,7 @@ class modApp(ctk.CTk):
                     data = json.load(file)
                     self.inventory.stock = data.get("inventory", self.inventory.stock)
                     self.inventory.recipes = data.get("Recipes", self.inventory.recipes)
-                    self.queue.orders = data.get("Orders", self.queue.orders)
+                    self.queue.orders = data.get("orders", self.queue.orders)
                     self.inventory.log = data.get("stock_log", self.inventory.log)
 
             except (OSError, json.JSONDecodeError, TypeError, AttributeError):
