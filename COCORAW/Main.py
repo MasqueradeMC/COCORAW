@@ -2,6 +2,7 @@ import operator
 import json
 import os
 import webbrowser
+import calendar
 import customtkinter as ctk
 from tkinter import messagebox
 from datetime import datetime
@@ -10,7 +11,7 @@ from Inventory import Inventory
 from Queue import Queue
 from Order import Order
 from ReceiptCalculator import ReceiptCalculator
-# from SalesReportGenerator import SalesReportGenerator
+from SalesReportGenerator import SalesReportGenerator
 
 ctk.set_appearance_mode("system")
 ctk.set_default_color_theme("green")
@@ -42,6 +43,7 @@ class modApp(ctk.CTk):
         self.queue = Queue()
 
         self.load_data()
+        self.report_generator = SalesReportGenerator()
 
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.pack(pady=20, padx=60, fill="both", expand=True)
@@ -138,6 +140,8 @@ class modApp(ctk.CTk):
 
 
             ctk.CTkButton(self.main_frame, text="Inventory", command=self.inventory_page).pack(pady=10)
+
+            ctk.CTkButton(self.main_frame, text="Sales Report", command=self.report_page).pack(pady=10)
 
         #cashier Dashboard
         elif self.current_user.role == "Cashier":
@@ -662,6 +666,61 @@ class modApp(ctk.CTk):
                 f"Unable to print automatically.\n"
                 f"Receipt saved at:\n{filename}"
             )
+
+        
+    def report_page(self):
+        if not self.Check_Access(["Manager"]):
+            return
+
+        self.clear_screen()
+        self.add_title("Monthly Sales Report")
+
+        ctk.CTkLabel(self.main_frame, text="Select a month and year", font=("Arial", 15)).pack(pady=5)
+
+        selector = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        selector.pack(pady=5)
+
+        months = list(calendar.month_name)[1:]
+        self.month_menu = ctk.CTkOptionMenu(selector, values=months)
+        self.month_menu.set(months[datetime.now().month - 1])
+        self.month_menu.pack(side="left", padx=5)
+
+        self.year_entry = ctk.CTkEntry(selector, width=80)
+        self.year_entry.insert(0, str(datetime.now().year))
+        self.year_entry.pack(side="left", padx=5)
+
+        ctk.CTkButton(self.main_frame, text="Generate Report", command=self.generate_report).pack(pady=10)
+
+        self.report_box = ctk.CTkTextbox(self.main_frame, width=500, height=250)
+        self.report_box.pack(pady=10)
+        self.report_box.configure(state="disabled")
+
+        self.add_BackButton("Home", self.home_page)
+
+    def generate_report(self):
+        if not self.Check_Access(["Manager"]):
+            return
+
+        year_text = self.year_entry.get().strip()
+        if not year_text.isdigit() or len(year_text) != 4:
+            messagebox.showerror("Invalid Year", "Enter a 4-digit year, e.g. 2026.")
+            return
+
+        year = int(year_text)
+        month = list(calendar.month_name).index(self.month_menu.get())
+
+        data = self.report_generator.generate(self.queue.orders, self.inventory.recipes, month, year)
+        report = self.report_generator.format_report(data)
+
+        self.report_box.configure(state="normal")
+        self.report_box.delete("1.0", "end")
+        self.report_box.insert("1.0", report)
+        self.report_box.configure(state="disabled")
+
+        try:
+            self.report_generator.save_report(report, month, year)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save report: {e}")
 
 
 if __name__ == "__main__":
