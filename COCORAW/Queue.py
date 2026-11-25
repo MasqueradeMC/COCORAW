@@ -8,7 +8,7 @@ class Queue:
     def add(self, order):
         self.orders.append(order)
 
-    def pending(self):
+    def pending(self): #Displays the orders that are not completed in the order that they were placed
         return [o for o in self.orders if o.get("status", "Pending") != "Completed"]
 
     def complete(self, order):
