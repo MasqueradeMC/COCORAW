@@ -116,6 +116,7 @@ class modApp(ctk.CTk):
         self.password_entry.pack(pady=5)
         #login button
         ctk.CTkButton(self.main_frame, text="Login", command=self.login).pack(pady=10)
+        ctk.CTkButton(self.main_frame, text="Exit", command=self.destroy, fg_color="#B3261E").pack(pady=5)
 
     def login(self):
         username = self.username_entry.get()
@@ -150,16 +151,16 @@ class modApp(ctk.CTk):
 
         #cashier Dashboard
         elif self.current_user.role == "Cashier":
-            ctk.CTkButton(self.main_frame, text="orders", command=self.orders_page).pack(pady=10)
+            ctk.CTkButton(self.main_frame, text="Orders", command=self.orders_page).pack(pady=10)
 
         #Barista Dashboard
         elif self.current_user.role == "Barista":
-            ctk.CTkButton(self.main_frame, text="orders", command=self.orders_page).pack(pady=10)
+            ctk.CTkButton(self.main_frame, text="Orders", command=self.orders_page).pack(pady=10)
 
 
         ctk.CTkButton(self.main_frame, text="Logout", command=self.login_page).pack(pady=10)
 
-    #access
+    #checks who is accessing the system
     def Check_Access(self, Roles):
         if self.current_user is None or self.current_user.role not in Roles:
             messagebox.showerror("Access Denied", "You do not have permission to access this page.")
@@ -234,7 +235,7 @@ class modApp(ctk.CTk):
         container.pack(fill="both", expand=True, padx=20, pady=10)
 
         # Left side - Customer order
-        order_frame = ctk.CTkFrame(container)
+        order_frame = ctk.CTkScrollableFrame(container)
         order_frame.pack(side="left", fill="both", expand=True, padx=10)
 
         # Right side - Calculator
