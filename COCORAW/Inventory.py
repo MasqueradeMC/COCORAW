@@ -5,7 +5,7 @@ class Inventory:
         self.log = []
 
         self.stock = stock or {
-            "Pineapple": {"Quantity": 10, "LowLevel": "5"},
+            "Pineapple": {"Quantity": 20, "LowLevel": "5"},
             "Ginger": {"Quantity": 5, "LowLevel": "2"},
             "Cucumber": {"Quantity": 8, "LowLevel": "3"},
             "Sorrel": {"Quantity": 20, "LowLevel": "5"},
