@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from ReceiptCalculator import ReceiptCalculator
 class Order:
     def __init__(self, order_id, items, prices, cashier, cash, status="Pending", time=None):
         self.id = order_id
@@ -9,8 +9,8 @@ class Order:
         self.status = status
         self.time = time or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.cashier = cashier
-        self.total = sum(prices[name] * qty for name, qty in items.items()) #placeholder until receiptcalculator is implemented
-        self.change = round(cash - self.total, 2)
+        self.total =  ReceiptCalculator.total(items, prices) # receiptcalculator is now implemented
+        self.change = ReceiptCalculator.change(cash, self.total)
 
     def complete(self):
         self.status = "Completed"

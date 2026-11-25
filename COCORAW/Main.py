@@ -6,6 +6,11 @@ import customtkinter as ctk
 from tkinter import messagebox
 from datetime import datetime
 from User import USERS
+from Inventory import Inventory
+from Queue import Queue
+from Order import Order
+from ReceiptCalculator import ReceiptCalculator
+# from SalesReportGenerator import SalesReportGenerator
 
 ctk.set_appearance_mode("system")
 ctk.set_default_color_theme("green")
@@ -13,7 +18,7 @@ ctk.set_default_color_theme("green")
 class modApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-
+        
         self.title("COCORAW")
         self.geometry("1200x750")
         self.minsize(1000, 650)
@@ -22,30 +27,6 @@ class modApp(ctk.CTk):
 
         self.data_file = "coco_raw_data_file.json"
 
-        #recipes
-        self.Recipes = {
-            "Pineapple Ginger Juice": {
-                "Price": 500,
-                "Ingredients": {
-                    "Pineapple": 0.5,
-                    "Ginger": 1
-                }
-            },
-            "Cucumber Ginger Juice": {
-                "Price": 500,
-                "Ingredients": {
-                    "Cucumber": 2,
-                    "Ginger": 0.2
-                }
-            },
-        }
-        #inventory
-        self.inventory = {
-            "Pineapple":{"Quantity": 10, "LowLevel": "5"},
-            "Ginger":{"Quantity": 5, "LowLevel": "2"},
-            "Cucumber":{"Quantity": 8, "LowLevel": "3"}
-        }
-        self.orders = []
         self.current_user = None
         self.quantity_entries = {}
 
@@ -57,6 +38,8 @@ class modApp(ctk.CTk):
         self.calc_operator = None
         self.calc_new_number = True
 
+        self.inventory = Inventory()
+        self.queue = Queue()
 
         self.load_data()
 
@@ -66,24 +49,23 @@ class modApp(ctk.CTk):
         self.login_page()
 
     #Data Management
-
     def load_data(self):
         if os.path.exists(self.data_file):
             try:
                 with open(self.data_file, "r") as file:
                     data = json.load(file)
-                    self.inventory = data.get("inventory", self.inventory)
-                    self.Recipes = data.get("Recipes", self.Recipes)
-                    self.orders = data.get("orders", self.orders)
+                    self.inventory.stock = data.get("inventory", self.inventory.stock)
+                    self.inventory.recipes = data.get("Recipes", self.inventory.recipes)
+                    self.queue.orders = data.get("orders", self.queue.orders)
 
             except (OSError, json.JSONDecodeError, TypeError, AttributeError):
                 messagebox.showerror("Error", "Failed to load data.")
 
     def save_data(self):
         data = {
-            "inventory": self.inventory,
-            "Recipes": self.Recipes,
-            "orders": self.orders
+            "inventory": self.inventory.stock,
+            "Recipes": self.inventory.recipes ,
+            "orders": self.queue.orders
         }
         try:
             with open(self.data_file, "w") as file:
@@ -148,7 +130,7 @@ class modApp(ctk.CTk):
 
         #Manager Dashboard
         if self.current_user.role == "Manager":
-            low_items = self.get_low_items()
+            low_items = self.inventory.low_items()
             if low_items:
                 ctk.CTkLabel(self.main_frame, text="Low Inventory Items:"+",".join(low_items), font=("Arial", 15)).pack(pady=10)
 
@@ -175,14 +157,6 @@ class modApp(ctk.CTk):
             return False
         return True
 
-    #inventory
-    def get_low_items(self):
-        low_items = []
-        for name, details in self.inventory.items():
-            if float(details["Quantity"]) <= float(details["LowLevel"]):
-                low_items.append(name)
-        return low_items
-
     def inventory_page(self):
         if not self.Check_Access(["Manager"]):
             return
@@ -190,13 +164,14 @@ class modApp(ctk.CTk):
         self.clear_screen()
         self.add_title("Ingredient Inventory")
 
-        low_items = self.get_low_items()
+        low_items = self.inventory.low_items()
         if low_items:
             ctk.CTkLabel(self.main_frame, text="Low Inventory Items:"+",".join(low_items), font=("Arial", 15)).pack(pady=10)
 
         inventory_text = ctk.CTkTextbox(self.main_frame, width=300, height=150)
         inventory_text.pack(pady=10)
-        for name, details in self.inventory.items():
+
+        for name, details in self.inventory.stock.items():
             inventory_text.insert("end", f"{name}: {details['Quantity']}\n")
         inventory_text.configure(state="disabled")
         self.add_BackButton("Home", self.home_page)
@@ -213,7 +188,7 @@ class modApp(ctk.CTk):
         ctk.CTkLabel(self.main_frame, text="Order Queue (oldest first)", font=("Arial", 18)).pack(pady=5)
 
         #Display only the orders that are not completed yet
-        pending = self.get_pending_orders()
+        pending = self.queue.pending()
         if not pending:
             ctk.CTkLabel(self.main_frame, text="No pending orders.").pack(pady=10)
 
@@ -260,7 +235,7 @@ class modApp(ctk.CTk):
         ).pack(pady=10)
 
         # Menu items
-        for name, recipe in self.Recipes.items():
+        for name, recipe in self.inventory.recipes.items():
 
             row = ctk.CTkFrame(order_frame)
             row.pack(fill="x", padx=10, pady=5)
@@ -400,7 +375,7 @@ class modApp(ctk.CTk):
             except ValueError:
                 quantity = 0
 
-            price = self.Recipes[name]["Price"]
+            price = self.inventory.recipes[name]["Price"]
             subtotal = quantity * price
 
             total += subtotal
@@ -428,7 +403,7 @@ class modApp(ctk.CTk):
 
                 try:
                     quantity = max(0, int(entry.get()))
-                    total += self.Recipes[name]["Price"] * quantity
+                    total += self.inventory.recipes [name]["Price"] * quantity
 
                 except ValueError:
                     pass
@@ -551,25 +526,15 @@ class modApp(ctk.CTk):
     #Creates the order, updates inventory and adds the order to the queue
     def create_order(self, items):
         #Checks the amount of each ingredient needed
-        needed = {}
-        for name, qty in items.items():
-            for ingredient, amount in self.Recipes[name]["Ingredients"].items():
-                needed[ingredient] = needed.get(ingredient, 0) + amount * qty
+        needed = self.inventory.needed_for(items)
+        short = self.inventory.shortages(needed)
 
-        #Ensures that there is enough ingredients
-        short = []
-        for ingredient, amount in needed.items():
-            if ingredient not in self.inventory or float(self.inventory[ingredient]["Quantity"]) < amount:
-                short.append(ingredient)
         if short:
             messagebox.showerror("Not Enough Ingredients", "Not enough: " + ", ".join(short))
             return
 
-        #Calculates and validates customer payment
-        total = sum(
-            self.Recipes[name]["Price"] * qty
-            for name, qty in items.items()
-        )
+        prices = {name: self.inventory.recipes[name]["Price"] for name in items}
+        total = ReceiptCalculator.total(items, prices)
 
         try:
             cash = float(self.cash_entry.get())
@@ -577,49 +542,26 @@ class modApp(ctk.CTk):
                 raise ValueError
         except ValueError:
             messagebox.showerror(
-                "Invalid Payment",
-                "Enter a valid cash amount."
-            )
+                "Invalid Payment", "Enter a valid cash amount.")
             return
 
         if cash < total:
             messagebox.showerror(
-                "Insufficient Payment",
-                "The customer has not paid enough."
-            )
+                "Insufficient Payment", "The customer has not paid enough.")
             return
 
-        change = round(cash - total, 2)
-
-        #Subtracts the ingredients needed from the inventory
-        for ingredient, amount in needed.items():
-            current = float(self.inventory[ingredient]["Quantity"])
-            self.inventory[ingredient]["Quantity"] = round(current - amount, 2)
-
-        #Uniuque order id
-        order_id = max([o["id"] for o in self.orders], default=0) + 1
-
-        #Total price of the order
-        total = sum(self.Recipes[name]["Price"] * qty for name, qty in items.items())
-
-        #Finalizes the order with its ID, date/time and status
-        order = {
-            "id": order_id,
-            "items": items,
-            "total": total,
-            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "status": "Pending",
-            "cashier": self.current_user.username,
-            "prices": {name: self.Recipes[name]["Price"] for name in items},
-            "cash": cash,
-            "change": change
-        }
-
-
-        self.orders.append(order)
+        
+        self.inventory.use(needed)
+        order = Order(self.queue.next_id(), items, prices, self.current_user.username, cash).makeorder()
+        
+        self.queue.add(order)
         self.last_order = order
 
+        order_id = order["id"]
+        change = order["change"]
+
         self.save_data()
+
 
         # Enable receipt printing
         self.receipt_button.configure(state="normal")
@@ -646,10 +588,7 @@ class modApp(ctk.CTk):
             command=self.take_order_page
         ).pack(pady=5)
 
-    #Displays the orders that are not completed in the order that they were placed
-    def get_pending_orders(self):
-        return [o for o in self.orders if o.get("status", "Pending") != "Completed"]
-
+    
     #Shows the items and quantities ordered
     def order_details_page(self, order):
         self.clear_screen()
@@ -667,7 +606,7 @@ class modApp(ctk.CTk):
 
     #Marks an order as completed removing it from the queue
     def complete_order(self, order):
-        order["status"] = "Completed"
+        self.queue.complete(order)
         self.save_data()
         messagebox.showinfo("Order Completed", f"Order {order['id']} has been completed.")
         self.orders_page()
@@ -684,35 +623,7 @@ class modApp(ctk.CTk):
 
         order = self.last_order
 
-        receipt = ""
-        receipt += "================================\n"
-        receipt += "            COCORAW             \n"
-        receipt += "        CUSTOMER RECEIPT        \n"
-        receipt += "================================\n"
-
-        receipt += f"Order ID: {order['id']}\n"
-        receipt += f"Date: {order['time']}\n"
-        receipt += f"Cashier: {order['cashier']}\n"
-
-        receipt += "--------------------------------\n"
-
-        for name, quantity in order["items"].items():
-            price = order["prices"][name]
-            subtotal = price * quantity
-
-            receipt += f"{name}\n"
-            receipt += f"  {quantity} x ${price:,.2f}"
-            receipt += f" = ${subtotal:,.2f}\n"
-
-        receipt += "--------------------------------\n"
-
-        receipt += f"TOTAL:  JMD ${order['total']:,.2f}\n"
-        receipt += f"CASH:   JMD ${order['cash']:,.2f}\n"
-        receipt += f"CHANGE: JMD ${order['change']:,.2f}\n"
-
-        receipt += "================================\n"
-        receipt += "     Thank you for shopping!    \n"
-        receipt += "================================\n"
+        receipt = ReceiptCalculator.build(self.last_order)
 
         try:
 
