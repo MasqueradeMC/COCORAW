@@ -815,7 +815,7 @@ class modApp(ctk.CTk):
         log_text = ctk.CTkTextbox(self.main_frame, width=700, height=350, corner_radius=10)
         log_text.pack(pady=10, padx=30)
         for e in reversed(self.inventory.log):
-            log_text.insert("end", f"{e['time']} | {e['user']} | {e['item']} {e['change']:+g} -> {e['new_quantity']} | {e['reason']}\n")
+            log_text.insert("end", f"Date and Time: {e['time']} | User: {e['user']} | {e['item']} {e['change']:+g} therefore, the new quantity is {e['new_quantity']} | Reason: {e['reason']}\n")
         log_text.configure(state="disabled")
         self.add_BackButton("Back to Inventory", self.inventory_page)
 
