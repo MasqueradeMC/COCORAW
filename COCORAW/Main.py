@@ -26,7 +26,7 @@ class modApp(ctk.CTk):
         self.geometry("1200x750")       
         self.minsize(1000, 650)
         self.configure(fg_color="#11A600")
-        self.colors = {"border": "#382D24", "text_color": "#D0D3D9"}
+        self.colors = {"border": "#2B221B", "text_color": "#D0D3D9"}
         self.after(100, lambda: self.state("zoomed")) #I was trying to center the screen and it wasn't working, so we get fullscreen instead
 
         self.data_file = "coco_raw_data_file.json"
@@ -48,8 +48,8 @@ class modApp(ctk.CTk):
         self.load_data()
         self.report_generator = SalesReportGenerator()
 
-        self.main_frame = ctk.CTkFrame(self, fg_color="#3D332C")
-        self.main_frame.pack(pady=20, padx=60, fill="both", expand=True)
+        self.main_frame = ctk.CTkFrame(self, fg_color="#3D322B", corner_radius=15)
+        self.main_frame.pack(pady=20, padx=30, fill="both", expand=True)
 
         self.login_page()
 
@@ -86,11 +86,11 @@ class modApp(ctk.CTk):
             widget.destroy()
 
     def add_title(self, title):
-        ctk.CTkLabel(self.main_frame, text=title, font=("verdana", 25)).pack(pady=15)
-        ctk.CTkFrame(self.main_frame, height=2, fg_color=self.colors["border"]).pack(pady=(5))
+        ctk.CTkLabel(self.main_frame, text=title, font=("verdana", 28, "bold")).pack(pady=20, padx=10)
+        ctk.CTkFrame(self.main_frame, height=2, fg_color=self.colors["border"]).pack(fill="x", padx=30, pady=5)
 
     def add_BackButton(self, text, command):
-        ctk.CTkButton(self.main_frame, text=text, command=command).pack(pady=10)
+        ctk.CTkButton(self.main_frame, text=text, command=command, height=38, corner_radius=8).pack(pady=10)
 
     def make_card(self, parent, title, Value):
         card = ctk.CTkFrame(parent, width=200, height=100, corner_radius=10)
@@ -107,11 +107,11 @@ class modApp(ctk.CTk):
 
         ctk.CTkLabel(self.main_frame, text="EMPLOYEE LOGIN:").pack(pady=10)
         #username
-        ctk.CTkLabel(self.main_frame, text="Username:").pack(pady=5)
+        ctk.CTkLabel(self.main_frame, text="USERNAME:").pack(pady=5)
         self.username_entry = ctk.CTkEntry(self.main_frame)
         self.username_entry.pack(pady=5)
         #password
-        ctk.CTkLabel(self.main_frame, text="Password:").pack(pady=5)
+        ctk.CTkLabel(self.main_frame, text="PASSWORD:").pack(pady=5)
         self.password_entry = ctk.CTkEntry(self.main_frame, show="*")
         self.password_entry.pack(pady=5)
         #login button
@@ -178,8 +178,8 @@ class modApp(ctk.CTk):
         if low_items:
             ctk.CTkLabel(self.main_frame, text="Low Inventory Items:"+",".join(low_items), font=("verdana", 15)).pack(pady=10)
 
-        inventory_text = ctk.CTkTextbox(self.main_frame, width=300, height=150)
-        inventory_text.pack(pady=10)
+        inventory_text = ctk.CTkTextbox(self.main_frame, width=600, height=350,corner_radius=10 )
+        inventory_text.pack(pady=20, padx=30)
 
         ctk.CTkButton(self.main_frame, text="Edit Inventory", command=self.manage_items_page).pack(pady=5)
         ctk.CTkButton(self.main_frame, text="View Stock Log", command=self.stock_log_page).pack(pady=5)
@@ -610,10 +610,10 @@ class modApp(ctk.CTk):
         self.clear_screen()
         self.add_title(f"Order {order['id']}")
 
-        ctk.CTkLabel(self.main_frame, text=f"Placed: {order['time']}", font=("verdana", 15)).pack(pady=5)
+        ctk.CTkLabel(self.main_frame, text=f"Placed: {order['time']}", font=("segoe UI", 15)).pack(pady=5)
 
         for name, qty in order["items"].items():
-            ctk.CTkLabel(self.main_frame, text=f"{qty} x {name}", font=("verdana", 15)).pack(pady=2)
+            ctk.CTkLabel(self.main_frame, text=f"{qty} x {name}", font=("segoe UI", 15)).pack(pady=2)
 
         #Only the barista and manager can mark an order as completed
         if self.current_user.role in ["Manager", "Barista"]:
@@ -693,18 +693,18 @@ class modApp(ctk.CTk):
         selector.pack(pady=5)
 
         months = list(calendar.month_name)[1:]
-        self.month_menu = ctk.CTkOptionMenu(selector, values=months)
+        self.month_menu = ctk.CTkOptionMenu(selector, values=months, width=180, height=38)
         self.month_menu.set(months[datetime.now().month - 1])
         self.month_menu.pack(side="left", padx=5)
 
-        self.year_entry = ctk.CTkEntry(selector, width=80)
+        self.year_entry = ctk.CTkEntry(selector, width=180, height=38)
         self.year_entry.insert(0, str(datetime.now().year))
         self.year_entry.pack(side="left", padx=5)
 
         ctk.CTkButton(self.main_frame, text="Generate Report", command=self.generate_report).pack(pady=10)
 
-        self.report_box = ctk.CTkTextbox(self.main_frame, width=500, height=250)
-        self.report_box.pack(pady=10)
+        self.report_box = ctk.CTkTextbox(self.main_frame, width=650, height=350, corner_radius=10)
+        self.report_box.pack(pady=15, padx=20)
         self.report_box.configure(state="disabled")
 
         self.add_BackButton("Home", self.home_page)
@@ -812,8 +812,8 @@ class modApp(ctk.CTk):
         self.clear_screen()
         self.add_title("Stock Adjustment Log")
 
-        log_text = ctk.CTkTextbox(self.main_frame, width=700, height=350)
-        log_text.pack(pady=10)
+        log_text = ctk.CTkTextbox(self.main_frame, width=700, height=350, corner_radius=10)
+        log_text.pack(pady=10, padx=30)
         for e in reversed(self.inventory.log):
             log_text.insert("end", f"{e['time']} | {e['user']} | {e['item']} {e['change']:+g} -> {e['new_quantity']} | {e['reason']}\n")
         log_text.configure(state="disabled")
